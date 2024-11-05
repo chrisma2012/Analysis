@@ -34,8 +34,7 @@ interface logDataType {
 declare global {
   interface Window {
     tracker: SlsTracker
-    LOGREPORT: LogReport
-    logReport(data: logDataType | Array<logDataType>, immediate: boolean)
+    logReport: (data: logDataType, immediate: boolean) => void //日志上报通用方法
   }
 }
 
@@ -91,25 +90,37 @@ const tracker = new SlsTracker(opts)
 tracker.useStsPlugin(stsPlugin)
 
 window.tracker = tracker
+window.logReport = logReport
 
-class LogReport {
-  static userData: UserData = { user_id: 1 }
-  public setUserInfo(data: UserData) {
-    LogReport.userData = { ...LogReport.userData, ...data }
-    this.pageInit()
+let userData: UserData = {
+  user_id: 1,
+}
+
+function logReport(data: logDataType | Array<logDataType>, immediate: boolean = false) {
+  //立即上传
+  if (immediate) {
+    if (Array.isArray(data)) return tracker.sendBatchLogsImmediate(data)
+    return tracker.sendImmediate(data)
   }
+  if (Array.isArray(data)) return tracker.sendBatchLogs(data)
+  return tracker.send(data)
+}
 
-  public pageInit() {
-    const [platform] = navigator.userAgent.match(/(?<=\()(.+?)(?=\))/g) as RegExpMatchArray
-    const [performanceNavigationTiming] = window.performance.getEntriesByType(
-      'navigation',
-    ) as Array<PerformanceNavigationTiming>
+logReport.prototype.setUserInfo = (data: UserData) => {
+  userData = { ...userData, ...data }
+}
+console.log()
 
-    let resourceTimeTotal = 0
-    const timeOrigin = performance.timeOrigin
-    const resourceTimingArray = (
-      window.performance.getEntriesByType('resource') as Array<PerformanceResourceTiming>
-    ).map(item => {
+setTimeout(() => {
+  const [platform] = navigator.userAgent.match(/(?<=\()(.+?)(?=\))/g) as RegExpMatchArray
+  const [performanceNavigationTiming] = window.performance.getEntriesByType(
+    'navigation',
+  ) as Array<PerformanceNavigationTiming>
+
+  let resourceTimeTotal = 0
+  const timeOrigin = performance.timeOrigin
+  const resourceTimingArray = (window.performance.getEntriesByType('resource') as Array<PerformanceResourceTiming>).map(
+    item => {
       resourceTimeTotal += item.duration
       return {
         resource_name: item.name.match(/\/[^/]*$/)?.[0],
@@ -119,59 +130,44 @@ class LogReport {
         loadEnd: timeOrigin + item.responseEnd,
         loadTime: item.duration,
       }
-    })
-    this.logReport([
-      {
-        eventType: eventTypeEnum.evt_page_view,
-        key_url: location.href,
-        key_referrer: document.referrer,
-      },
-      {
-        eventType: eventTypeEnum.evt_device_info,
-        key_url: location.href,
-        key_referrer: document.referrer,
-        key_vendor: navigator.vendor || 'Firefox', //设备制造商
-        key_system: platform || (navigator as Navigator)?.oscpu, //操作系统
-        key_systemVersion: platform || (navigator as Navigator)?.oscpu, //操作系统版本
-        key_screenHeight: screen.height,
-        key_screenWidth: screen.width,
-        key_connectionType: (navigator as Navigator).connection?.effectiveType, //手机上网类型
-        key_language: navigator.language, //语言
-      },
-      {
-        eventType: eventTypeEnum.evt_performance,
-        //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
-        key_pageloadstart: timeOrigin + performanceNavigationTiming.startTime,
-        key_pageloadend: timeOrigin + performanceNavigationTiming.loadEventEnd,
-        key_resourceloadTime: resourceTimeTotal,
-        key_resourceArray: resourceTimingArray,
-      },
-      {
-        eventType: eventTypeEnum.evt_visit_source,
-        //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
-        // key_pageloadstart: timeOrigin + performanceNavigationTiming.startTime,
-        // key_pageloadend: timeOrigin + performanceNavigationTiming.loadEventEnd,
-        // key_resourceloadTime: resourceTimeTotal,
-        // key_resourceArray: resourceTimingArray,
-      },
-    ])
-  }
+    },
+  )
 
-  public logReport(data: logDataType | Array<logDataType>, immediate: boolean = false) {
-    //批量上报
-    if (Array.isArray(data)) {
-      data = data.map(item => {
-        item.user_id = LogReport.userData.user_id
-        return item
-      })
-      return immediate ? tracker.sendBatchLogsImmediate(data) : tracker.sendBatchLogs(data)
-    }
-    //单个上报
-    data = { ...data, user_id: LogReport.userData.user_id }
-    return immediate ? tracker.sendImmediate(data) : tracker.send(data)
-  }
-}
-const LOGREPORT = new LogReport()
-
-window.LOGREPORT = LOGREPORT
-window.logReport = LOGREPORT.logReport
+  logReport([
+    {
+      eventType: eventTypeEnum.evt_page_view,
+      user_id: 1,
+      key_url: location.href,
+      key_referrer: document.referrer,
+    },
+    {
+      eventType: eventTypeEnum.evt_device_info,
+      user_id: 1,
+      key_url: location.href,
+      key_referrer: document.referrer,
+      key_vendor: navigator.vendor || 'Firefox', //设备制造商
+      key_system: platform || (navigator as Navigator)?.oscpu, //操作系统
+      key_systemVersion: platform || (navigator as Navigator)?.oscpu, //操作系统版本
+      key_screenHeight: screen.height,
+      key_screenWidth: screen.width,
+      key_connectionType: (navigator as Navigator).connection?.effectiveType, //手机上网类型
+      key_language: navigator.language, //语言
+    },
+    {
+      eventType: eventTypeEnum.evt_performance,
+      //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
+      key_pageloadstart: timeOrigin + performanceNavigationTiming.startTime,
+      key_pageloadend: timeOrigin + performanceNavigationTiming.loadEventEnd,
+      key_resourceloadTime: resourceTimeTotal,
+      key_resourceArray: resourceTimingArray,
+    },
+    {
+      eventType: eventTypeEnum.evt_visit_source,
+      //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
+      // key_pageloadstart: timeOrigin + performanceNavigationTiming.startTime,
+      // key_pageloadend: timeOrigin + performanceNavigationTiming.loadEventEnd,
+      // key_resourceloadTime: resourceTimeTotal,
+      // key_resourceArray: resourceTimingArray,
+    },
+  ])
+}, 5000)
