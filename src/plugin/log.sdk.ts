@@ -3,7 +3,7 @@
 import SlsTracker from '@aliyun-sls/web-track-browser'
 //通过STS可以获取自定义时效和访问权限的临时身份凭证，无需开启Logstore的WebTracking功能，不会产生脏数据
 import createStsPlugin from '@aliyun-sls/web-sts-plugin'
-import { eventTypeEnum, type logDataType, type PageViewType, type pluginOptionType, type UserData } from './log-sdk'
+import { eventTypeEnum } from './common.var'
 
 declare global {
   interface Window {
@@ -14,6 +14,51 @@ declare global {
 interface Navigator {
   oscpu?: string
   connection?: { effectiveType: string; type: string }
+}
+
+export interface UserData {
+  user_id: string | number
+  phone_info: {
+    phone: string
+    area_code: string
+    phone_city: string
+    phone_province: string
+    operator: string
+  }
+  position: PositionType
+}
+export interface logDataType {
+  eventType: eventTypeEnum
+  [key: string]: unknown
+}
+export interface PositionType {
+  server_ip: string
+  client_ip: string
+  client_ip_region: string
+  client_ip_province: string
+  client_ip_city: string
+  longitude: number
+  latitude: number
+}
+export interface pluginOptionType {
+  sts_token_api: string
+  aliyun_config: {
+    host: string
+    project: string
+    logstore: string
+    time?: number
+    count?: number
+    topic?: string
+    source?: string
+    tags?: Record<string, string>
+  }
+}
+export interface PageViewType {
+  session_id: string
+  product_id: number
+  product_name: string
+  page_cnt: number
+  clause_status: string
 }
 
 // 监控控制台输出

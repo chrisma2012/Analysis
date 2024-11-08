@@ -1,6 +1,6 @@
 // 配套log.sdk.ts使用
 import { type App } from 'vue'
-import { eventTypeEnum } from './log-sdk'
+import { eventTypeEnum } from './common.var'
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 const debounce = (func: Function, timeout: number = 2000) => {
