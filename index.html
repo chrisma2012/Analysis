@@ -28,8 +28,47 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
-    <script type="module" src="./aliyun-sls.init.ts"></script>
-    <!-- <script defer src="http://localhost:3000/script.js" data-website-id="9a5f08c3-ffdb-4844-a512-b4c94200f2ad"></script>
-    <script defer src="./umami.sdk.js"></script> -->
+    <script type="module" id="log_sdk_script" defer src="/src/plugin/log.sdk.ts"></script>
+    <script defer>
+      document.getElementById('log_sdk_script').addEventListener('load', () => {
+        Log.setSlsConf({
+          sts_token_api: 'http://47.109.194.67/get_sts_token',
+          aliyun_config: {
+            host: 'cn-chengdu.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
+            project: 'qiheng', // Project 名称
+            logstore: 'ldy', // Logstore 名称
+            time: 3, // 发送日志的时间间隔，默认是10秒
+            count: 10, // 发送日志的数量大小，默认是10条
+            topic: 'topic', // 自定义日志主题
+            source: 'Analysis', //日志来源。您可以自定义该字段，以便于识别。此处取项目的项目名字。唯一值
+            //日志标签信息。您可以自定义该字段，便于识别。
+            tags: {
+              // sdk_version: '1.0.0',
+            },
+          },
+        })
+
+        Log.initReport('13856984586')
+      })
+
+      // Log.setSlsConf({
+      //   sts_token_api: 'http://8.138.16.88/get_sts_token',
+      //   aliyun_config: {
+      //     host: 'cn-guangzhou.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
+      //     project: 'project-webtrcking-qiheng-2024', // Project 名称
+      //     logstore: 'web-tracking-log-store', // Logstore 名称
+      //     time: 3, // 发送日志的时间间隔，默认是10秒
+      //     count: 10, // 发送日志的数量大小，默认是10条
+      //     topic: 'topic', // 自定义日志主题
+      //     source: 'Analysis', //日志来源。您可以自定义该字段，以便于识别。此处取项目的项目名字。唯一值
+      //     //日志标签信息。您可以自定义该字段，便于识别。
+      //     tags: {
+      //       // sdk_version: '1.0.0',
+      //     },
+      //   },
+      // })
+
+      // Log.initReport('13856984586')
+    </script>
   </body>
 </html>

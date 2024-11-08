@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent, reactive, ref, shallowRef } from 'vue'
+import { eventTypeEnum } from './plugin/log.sdk'
 
 const formData = reactive({
   phone: '',
@@ -9,20 +10,26 @@ const checked = ref(false)
 const onSubmit = () => {}
 
 const currentPop = shallowRef()
+
+const directData = {
+  a: 2,
+  b: 4,
+}
 const showPopBusinessRules = () => {
-  currentPop.value = defineAsyncComponent(() => import('./popup/popBusinessRules.vue'))
-  window.tracker.send({
-    eventType: 'open_dialog',
-    productName: '规则弹窗',
-    price: 500,
-  })
+  // currentPop.value = defineAsyncComponent(() => import('./popup/popBusinessRules.vue'))
+  // window.Log.logReport({
+  //   eventType: eventTypeEnum.evt_click,
+  //   productName: '规则弹窗',
+  //   price: 500,
+  // })
 }
 </script>
 
 <template>
   <RouterLink to="/about">关于</RouterLink>
 
-  <span class="anchor anchor-business-rules" data-umami-event="规则按钮" @click="showPopBusinessRules"></span>
+  <span class="anchor anchor-business-rules" v-log-click:evt_click="directData" @click="showPopBusinessRules"></span>
+  <input type="text" v-log-input:evt_input="directData" />
   <span class="anchor anchor-member-center"></span>
   <span class="anchor anchor-download-miguapp"></span>
   <span class="anchor anchor-unsubscribe"></span>
@@ -31,19 +38,8 @@ const showPopBusinessRules = () => {
     <div class="carousel"></div>
     <img src="https://gzsucai.diantads.com/static/t/xxl/tf/11801/step1.gif" />
     <van-form @submit="onSubmit">
-      <van-field
-        class="login-phone"
-        v-model="formData.phone"
-        name="手机号码"
-        label="手机号码"
-        placeholder="手机号码"
-        :rules="[{ required: true, message: '请填写手机号码' }]"
-      />
-      <img
-        native-type="submit"
-        class="login-btn"
-        src="https://gzsucai.diantads.com/static/t/xxl/tf/111386/cl129_an_lonnianqicai.png"
-      />
+      <van-field class="login-phone" v-model="formData.phone" name="手机号码" label="手机号码" placeholder="手机号码" :rules="[{ required: true, message: '请填写手机号码' }]" />
+      <img native-type="submit" class="login-btn" src="https://gzsucai.diantads.com/static/t/xxl/tf/111386/cl129_an_lonnianqicai.png" />
     </van-form>
   </div>
   <div class="login-attention">
@@ -52,9 +48,7 @@ const showPopBusinessRules = () => {
       我已阅读并同意 <a href="...">《隐私政策》</a> <a href="...">《服务协议》</a>和<a href="...">《解约条款》</a>
     </div>
     <p>1、开通 “音乐全曲包-七彩歌曲15元包” 资费：15元/月，通过话费扣取，未退订按自然月续订和续费。</p>
-    <p>
-      2、开通 “音乐全曲包-七彩歌曲15元包” 可享咪咕音乐白金会员、 视频彩铃权益、32选1热门会员月卡、歌曲专区试听及下载权益
-    </p>
+    <p>2、开通 “音乐全曲包-七彩歌曲15元包” 可享咪咕音乐白金会员、 视频彩铃权益、32选1热门会员月卡、歌曲专区试听及下载权益</p>
     <p>3、如需退款业务，请点击右侧 “退订” 按钮，或短信发送0000至10086，根据收到的短信提示操作进行退订。</p>
   </div>
   <div class="privilege-item">

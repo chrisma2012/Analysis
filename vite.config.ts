@@ -64,4 +64,15 @@ export default defineConfig({
       ],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: id => {
+          if (id.includes('aliyun-sls')) {
+            return 'aliyun-sls'
+          }
+        },
+      },
+    },
+  },
 })
