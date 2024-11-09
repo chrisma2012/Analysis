@@ -8,7 +8,7 @@ import { eventTypeEnum } from './common.var'
 declare global {
   interface Window {
     Log: LogReport
-    userData: UserData
+    _userData: UserData
   }
 }
 interface Navigator {
@@ -214,11 +214,8 @@ export class LogReport {
   // 版本
   static readonly sdk_version: string = '1.0.0'
 
-  constructor() {
-    window.userData = {} as UserData
-  }
-
-  public setSlsConf(data: pluginOptionType) {
+  constructor(data: pluginOptionType) {
+    window._userData = {} as UserData
     stsOpt.sts_token_api = data.sts_token_api
     aliyun_config = { ...aliyun_config, ...data.aliyun_config }
 
@@ -236,14 +233,14 @@ export class LogReport {
 
   async getIpPhoneConf(phone: string) {
     const { ip_info, phone_info, server_ip } = await ajax('get', `http://47.109.194.67/get_ip_and_phone_info/${phone}`)
-    window.userData.phone_info = {
+    window._userData.phone_info = {
       phone,
       area_code: phone_info.area_code,
       phone_province: phone_info.province,
       phone_city: phone_info.city,
       operator: phone_info.phone_type,
     }
-    window.userData.position = {
+    window._userData.position = {
       server_ip,
       client_ip: ip_info.ip,
       client_ip_region: ip_info.country,
@@ -295,7 +292,7 @@ export class LogReport {
     this.logReport([
       {
         eventType: eventTypeEnum.evt_device_info,
-        ...window.userData.position,
+        ...window._userData.position,
         device: navigator.vendor || 'Firefox', //设备制造商
         device_type: 'device_type',
         device_height: screen.height,
@@ -309,7 +306,7 @@ export class LogReport {
         app_name: 'app_name',
         app_version: 'app_version',
         traffic_type: (navigator as Navigator).connection?.effectiveType, //手机上网类型
-        operator: window.userData.phone_info.operator,
+        operator: window._userData.phone_info.operator,
         network_type: (navigator as Navigator).connection?.type || '',
         device_id: 'device_id',
         lang: navigator.language,
@@ -345,20 +342,35 @@ export class LogReport {
     if (Array.isArray(data)) {
       //批量上报
       data = data.map(item => {
-        item.user_id = window.userData?.user_id
+        item.user_id = window._userData?.user_id
         return item
       })
       if (this.tracker === undefined) return this.toReportQueue.push(data)
       return immediate ? this.tracker.sendBatchLogsImmediate(data) : this.tracker.sendBatchLogs(data)
     }
     //单个上报
-    data = { ...data, user_id: window.userData?.user_id }
+    data = { ...data, user_id: window._userData?.user_id }
     if (this.tracker === undefined) return this.toReportQueue.push(data)
     return immediate ? this.tracker.sendImmediate(data) : this.tracker.send(data)
   }
 }
 
-const Log = new LogReport()
+const Log = new LogReport({
+  sts_token_api: 'http://8.138.16.88/get_sts_token',
+  aliyun_config: {
+    host: 'cn-guangzhou.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
+    project: 'project-webtrcking-qiheng-2024', // Project 名称
+    logstore: 'web-tracking-log-store', // Logstore 名称
+    time: 3, // 发送日志的时间间隔，默认是10秒
+    count: 10, // 发送日志的数量大小，默认是10条
+    topic: 'topic', // 自定义日志主题
+    source: 'Analysis', //日志来源。您可以自定义该字段，以便于识别。此处取项目的项目名字。唯一值
+    //日志标签信息。您可以自定义该字段，便于识别。
+    tags: {
+      // sdk_version: '1.0.0',
+    },
+  },
+})
 
 console.log = consoleWrapper(console.log, eventTypeEnum.evt_console_log)
 console.error = consoleWrapper(console.error, eventTypeEnum.evt_console_error)
@@ -367,7 +379,7 @@ console.error = consoleWrapper(console.error, eventTypeEnum.evt_console_error)
 const errorCallback = (err: unknown) => {
   Log.logReport({
     eventType: eventTypeEnum.evt_error,
-    errData: err,
+    errData: JSON.stringify(err),
   })
 }
 function errorMonitor() {
@@ -375,5 +387,6 @@ function errorMonitor() {
   window.addEventListener('unhandledrejection', errorCallback)
 }
 errorMonitor()
+
 //挂载到全局
 window.Log = Log
