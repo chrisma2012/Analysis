@@ -39,7 +39,6 @@ export default {
     })
     //错误监控
     app.config.errorHandler = err => {
-      debugger
       window.Log.logReport({
         eventType: eventTypeEnum.evt_error,
         errData: err,
