@@ -14,7 +14,7 @@ const debounce = (func: Function, timeout: number = 2000) => {
 }
 
 const getEventInfo = () => {
-  const { phone_province, phone_city, phone } = window.userData.phone_info
+  const { phone_province, phone_city, phone } = window._userData.phone_info
   return {
     page_length: `${(screen.availHeight / document.documentElement.scrollHeight) * screen.availHeight}/${document.body.clientHeight}`, //滚动条总长度/页面总长度
     current_page_length: document.documentElement.scrollTop, //当前滚动条位置
@@ -39,6 +39,7 @@ export default {
     })
     //错误监控
     app.config.errorHandler = err => {
+      debugger
       window.Log.logReport({
         eventType: eventTypeEnum.evt_error,
         errData: err,
@@ -88,6 +89,10 @@ export default {
     //input事件指令定义
     app.directive('log-input', {
       mounted(el, binding) {
+        //处理指令在封装的组件上使用的问题
+        if (el.tagName !== 'INPUT') {
+          el = el.getElementsByTagName('input')[0]
+        }
         let location_coor = {}
         el.addEventListener(
           'click',
@@ -110,6 +115,9 @@ export default {
         )
       },
       beforeUnmount(el) {
+        if (el.tagName !== 'INPUT') {
+          el = el.getElementsByTagName('input')[0]
+        }
         el.removeEventListener('input', el.inputHandler)
         el.removeEventListener('click', el.clickHandler)
       },

@@ -3,70 +3,30 @@
 import SlsTracker from '@aliyun-sls/web-track-browser'
 //通过STS可以获取自定义时效和访问权限的临时身份凭证，无需开启Logstore的WebTracking功能，不会产生脏数据
 import createStsPlugin from '@aliyun-sls/web-sts-plugin'
-import { eventTypeEnum } from './common.var'
+import { eventTypeEnum, type logDataType, type Navigator, type PageViewType, type pluginOptionType, type UserData } from './common.var'
 
-declare global {
-  interface Window {
-    Log: LogReport
-    _userData: UserData
+function getStr(target: object) {
+  let str: string = ''
+  for (const key in target) {
+    if (typeof target[key as keyof typeof target] === 'string') {
+      str += `${key}：  ${target[key as keyof typeof target]};`
+    }
   }
-}
-interface Navigator {
-  oscpu?: string
-  connection?: { effectiveType: string; type: string }
-}
-
-export interface UserData {
-  user_id: string | number
-  phone_info: {
-    phone: string
-    area_code: string
-    phone_city: string
-    phone_province: string
-    operator: string
-  }
-  position: PositionType
-}
-export interface logDataType {
-  eventType: eventTypeEnum
-  [key: string]: unknown
-}
-export interface PositionType {
-  server_ip: string
-  client_ip: string
-  client_ip_region: string
-  client_ip_province: string
-  client_ip_city: string
-  longitude: number
-  latitude: number
-}
-export interface pluginOptionType {
-  sts_token_api: string
-  aliyun_config: {
-    host: string
-    project: string
-    logstore: string
-    time?: number
-    count?: number
-    topic?: string
-    source?: string
-    tags?: Record<string, string>
-  }
-}
-export interface PageViewType {
-  session_id: string
-  product_id: number
-  product_name: string
-  page_cnt: number
-  clause_status: string
+  return str
 }
 
 // 监控控制台输出
 function consoleWrapper(fn: () => void, eventType: eventTypeEnum) {
   return function (...args: []) {
+    const newArgs = args.map(item => {
+      if (typeof item === 'object' && !Array.isArray(item)) {
+        return getStr(item)
+      }
+      return item
+    })
     window.Log.logReport({
       eventType,
-      args,
+      console_content: newArgs,
     })
     fn.apply(window, args)
   }
@@ -153,6 +113,7 @@ const ajax = async (method: string, url: string) => {
     const response = await fetch(url, {
       method,
     })
+
     return response.json() // parses JSON response into native JavaScript objects
   }
   return new Promise((resolve, reject) => {
@@ -207,9 +168,9 @@ const stsOpt = {
  * @class LogReport
  */
 export class LogReport {
-  private tracker!: SlsTracker
+  tracker
 
-  private toReportQueue: Array<logDataType | logDataType[]> = []
+  toReportQueue: Array<logDataType | logDataType[]> = []
 
   // 版本
   static readonly sdk_version: string = '1.0.0'
@@ -224,15 +185,14 @@ export class LogReport {
     // 使用 sts 插件
     tracker.useStsPlugin(stsPlugin)
     this.tracker = tracker
-
-    console.log('----待上报事件队列', this.toReportQueue)
     if (this.toReportQueue.length) {
       this.toReportQueue.forEach(item => this.logReport(item))
     }
   }
 
   async getIpPhoneConf(phone: string) {
-    const { ip_info, phone_info, server_ip } = await ajax('get', `http://47.109.194.67/get_ip_and_phone_info/${phone}`)
+    const res = await ajax('get', `http://47.119.183.29/app-api/get_ip_and_phone_info/${phone}`)
+    const { ip_info, phone_info, server_ip } = res.data
     window._userData.phone_info = {
       phone,
       area_code: phone_info.area_code,
@@ -355,7 +315,7 @@ export class LogReport {
   }
 }
 
-const Log = new LogReport({
+const Log = (window.Log = new LogReport({
   sts_token_api: 'http://8.138.16.88/get_sts_token',
   aliyun_config: {
     host: 'cn-guangzhou.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
@@ -370,23 +330,28 @@ const Log = new LogReport({
       // sdk_version: '1.0.0',
     },
   },
-})
-
+}))
+//改写console方法必须放在Log挂载window之后
 console.log = consoleWrapper(console.log, eventTypeEnum.evt_console_log)
 console.error = consoleWrapper(console.error, eventTypeEnum.evt_console_error)
+console.warn = consoleWrapper(console.warn, eventTypeEnum.evt_console_warn)
 
 //错误监控
-const errorCallback = (err: unknown) => {
-  Log.logReport({
-    eventType: eventTypeEnum.evt_error,
-    errData: JSON.stringify(err),
+function errorMonitor() {
+  window.onerror = function (message, url, line, column, error) {
+    Log.logReport({
+      eventType: eventTypeEnum.evt_error,
+      content: `【${message}】:${error?.stack} 第${line}行 第${column}列`,
+    })
+  }
+  // window.addEventListener('error', (message, url, line, column, error){
+  //   console.log(message,url,line,column,error)
+  // })
+  window.addEventListener('unhandledrejection', ({ reason: { message, stack } }) => {
+    Log.logReport({
+      eventType: eventTypeEnum.evt_unhandledrejection,
+      content: `【${message}】:${stack}`,
+    })
   })
 }
-function errorMonitor() {
-  window.addEventListener('error', errorCallback)
-  window.addEventListener('unhandledrejection', errorCallback)
-}
 errorMonitor()
-
-//挂载到全局
-window.Log = Log
