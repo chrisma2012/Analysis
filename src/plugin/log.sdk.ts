@@ -1,10 +1,8 @@
 // 说明文档地址：https://help.aliyun.com/zh/sls/developer-reference/use-the-sts-plugin-of-the-webtracking-javascript-sdk-to-upload-logs?spm=a2c4g.11186623.0.0.34651c10gyqi6H
-
 import SlsTracker from '@aliyun-sls/web-track-browser'
 //通过STS可以获取自定义时效和访问权限的临时身份凭证，无需开启Logstore的WebTracking功能，不会产生脏数据
-import createStsPlugin from '@aliyun-sls/web-sts-plugin'
+// import createStsPlugin from '@aliyun-sls/web-sts-plugin'
 import { eventTypeEnum, type logDataType, type Navigator, type PageViewType, type pluginOptionType, type UserData } from './common.var'
-
 function getStr(target: object) {
   let str: string = ''
   for (const key in target) {
@@ -14,7 +12,6 @@ function getStr(target: object) {
   }
   return str
 }
-
 // 监控控制台输出
 function consoleWrapper(fn: () => void, eventType: eventTypeEnum) {
   return function (...args: []) {
@@ -31,9 +28,7 @@ function consoleWrapper(fn: () => void, eventType: eventTypeEnum) {
     fn.apply(window, args)
   }
 }
-
 // /(?<=MicroMessenger\/).+(?=\()/ 匹配MicroMessenger和）之间的字符
-
 const getBrowserInfo = (ua: string) => {
   const mobile_browser = [
     {
@@ -146,21 +141,20 @@ let aliyun_config = {
   },
 }
 
-const stsOpt = {
-  accessKeyId: '',
-  accessKeySecret: '',
-  securityToken: '',
-  sts_token_api: '',
-  // 以下是一个 stsToken 刷新函数的简单示例
-  refreshSTSToken: () =>
-    ajax('GET', stsOpt.sts_token_api).then(res => {
-      stsOpt.accessKeyId = res.AccessKeyId
-      stsOpt.accessKeySecret = res.AccessKeySecret
-      stsOpt.securityToken = res.SecurityToken
-    }),
-  refreshSTSTokenInterval: 300000, //刷新令牌的间隔（毫秒），默认为 300000（5分钟）。
-  stsTokenFreshTime: undefined, //最新的令牌获取时间，不用填写
-}
+// const stsOpt = {
+//   accessKeyId: '',
+//   accessKeySecret: '',
+//   securityToken: '',
+//   sts_token_api: '',
+//   // 以下是一个 stsToken 刷新函数的简单示例
+//   refreshSTSToken: () =>
+//     ajax('GET', stsOpt.sts_token_api).then(res => {
+//       stsOpt.accessKeyId = res.AccessKeyId
+//       stsOpt.accessKeySecret = res.AccessKeySecret
+//       stsOpt.securityToken = res.SecurityToken
+//     }),
+//   refreshSTSTokenInterval: 300000, //刷新令牌的间隔（毫秒），默认为 300000（5分钟）。
+// }
 
 /**
  * //定义日志上报SDK类
@@ -177,13 +171,13 @@ export class LogReport {
 
   constructor(data: pluginOptionType) {
     window._userData = {} as UserData
-    stsOpt.sts_token_api = data.sts_token_api
+    // stsOpt.sts_token_api = data.sts_token_api
     aliyun_config = { ...aliyun_config, ...data.aliyun_config }
 
-    const stsPlugin = createStsPlugin(stsOpt)
+    // const stsPlugin = createStsPlugin(stsOpt)
     const tracker = new SlsTracker(aliyun_config)
     // 使用 sts 插件
-    tracker.useStsPlugin(stsPlugin)
+    // tracker.useStsPlugin(stsPlugin)
     this.tracker = tracker
     if (this.toReportQueue.length) {
       this.toReportQueue.forEach(item => this.logReport(item))
@@ -223,31 +217,9 @@ export class LogReport {
   public async initReport(phone: string) {
     await this.getIpPhoneConf(phone)
     const [platform] = navigator.userAgent.match(/(?<=\()(.+?)(?=\))/g) as RegExpMatchArray
-    const [performanceNavigationTiming] = window.performance.getEntriesByType('navigation') as Array<PerformanceNavigationTiming>
-
-    let resourceTimeTotal = 0
-    const timeOrigin = performance.timeOrigin
-    const resourceTimingArray = (window.performance.getEntriesByType('resource') as Array<PerformanceResourceTiming>).map(item => {
-      resourceTimeTotal += item.duration
-      return {
-        resource_name: item.name.match(/\/[^/]*$/)?.[0],
-        encodedBodySize: item.encodedBodySize,
-        initiatorType: item.initiatorType,
-        resource_load_start: timeOrigin + item.startTime,
-        resource_load_end: timeOrigin + item.responseEnd,
-        loadTime: item.duration,
-      }
-    })
 
     const browserInfo = getBrowserInfo(navigator.userAgent)
-    // //页面pv事件上报
-    // this.reportPageView({
-    //   session_id: 'session_id',
-    //   product_id: 110,
-    //   product_name: 'product_name',
-    //   page_cnt: 2,
-    //   clause_status: 'clause_status',
-    // })
+
     //上报基础信息
     this.logReport([
       {
@@ -279,14 +251,6 @@ export class LogReport {
         entrance_type: 'entrance_type', //来源分类
         channel_type: 'channel_type', //渠道来源
       },
-      {
-        eventType: eventTypeEnum.evt_performance,
-        //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
-        page_load_start: timeOrigin + performanceNavigationTiming.startTime,
-        page_load_end: timeOrigin + performanceNavigationTiming.loadEventEnd,
-        key_resourceloadTime: resourceTimeTotal,
-        key_resourceArray: resourceTimingArray,
-      },
     ])
   }
 
@@ -316,11 +280,11 @@ export class LogReport {
 }
 
 const Log = (window.Log = new LogReport({
-  sts_token_api: 'http://8.138.16.88/get_sts_token',
+  // sts_token_api: 'http://8.138.16.88/get_sts_token',
   aliyun_config: {
     host: 'cn-guangzhou.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
     project: 'project-webtrcking-qiheng-2024', // Project 名称
-    logstore: 'web-tracking-log-store', // Logstore 名称
+    logstore: 'log-cdn-store', // Logstore 名称
     time: 3, // 发送日志的时间间隔，默认是10秒
     count: 10, // 发送日志的数量大小，默认是10条
     topic: 'topic', // 自定义日志主题
@@ -338,15 +302,13 @@ console.warn = consoleWrapper(console.warn, eventTypeEnum.evt_console_warn)
 
 //错误监控
 function errorMonitor() {
-  window.onerror = function (message, url, line, column, error) {
+  window.onerror = function (message, _url, line, column, error) {
     Log.logReport({
       eventType: eventTypeEnum.evt_error,
       content: `【${message}】:${error?.stack} 第${line}行 第${column}列`,
     })
   }
-  // window.addEventListener('error', (message, url, line, column, error){
-  //   console.log(message,url,line,column,error)
-  // })
+
   window.addEventListener('unhandledrejection', ({ reason: { message, stack } }) => {
     Log.logReport({
       eventType: eventTypeEnum.evt_unhandledrejection,
@@ -355,3 +317,44 @@ function errorMonitor() {
   })
 }
 errorMonitor()
+
+// 页面卸载前上报性能日志
+window.addEventListener('beforeunload', () => {
+  const [performanceNavigationTiming] = window.performance.getEntriesByType('navigation') as Array<PerformanceNavigationTiming>
+
+  let resourceTimeTotal = 0
+  const timeOrigin = performance.timeOrigin
+  const resourceTimingArray = (window.performance.getEntriesByType('resource') as Array<PerformanceResourceTiming>).map(item => {
+    resourceTimeTotal += item.duration
+    return {
+      resource_name: item.name.match(/\/[^/]*$/)?.[0],
+      encodedBodySize: item.encodedBodySize,
+      initiatorType: item.initiatorType,
+      resource_load_start: timeOrigin + item.startTime,
+      resource_load_end: timeOrigin + item.responseEnd,
+      loadTime: item.duration,
+    }
+  })
+
+  window.Log.logReport(
+    {
+      eventType: eventTypeEnum.evt_performance,
+      //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
+      page_load_start: timeOrigin + performanceNavigationTiming.startTime,
+      page_load_end: timeOrigin + performanceNavigationTiming.loadEventEnd,
+      key_resourceloadTime: resourceTimeTotal,
+      key_resourceArray: resourceTimingArray,
+    },
+    true,
+  )
+})
+
+// 监听页面点击事件
+window.addEventListener('click', e => {
+  const domId = (e.target as HTMLElement)?.id
+  const data = window._reportData?.[domId]
+  if (!domId || !data) return
+  window.Log.logReport({
+    ...data,
+  } as logDataType)
+})

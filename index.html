@@ -28,8 +28,8 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
-    <script type="module" id="log_sdk_script" defer src="/src/plugin/log.sdk.ts" crossorigin></script>
-    <!-- <script id="log_sdk_script" defer src="./src/js/log.sdk.js"></script> -->
+    <!-- <script type="module" id="log_sdk_script" defer src="/src/plugin/log.sdk.ts" crossorigin></script> -->
+    <script id="log_sdk_script" defer src="http://8.138.16.88:8080/log.sdk.js"></script>
     <script defer>
       document.getElementById('log_sdk_script').onload = function () {
         window.Log.initReport('13856984586')

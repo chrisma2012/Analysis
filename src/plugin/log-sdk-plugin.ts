@@ -27,8 +27,7 @@ const getEventInfo = () => {
 export default {
   install(app: App) {
     //路由变化监控
-    app.config.globalProperties.$router.afterEach(() => {
-      //   console.log()
+    app.config.globalProperties?.$router?.afterEach(() => {
       window.Log.reportPageView({
         session_id: 'session_id',
         product_id: 130,
@@ -45,28 +44,15 @@ export default {
       })
     }
 
-    // location_page: 'location_page', //点击位置-页面
-    // page_description: 'page_description', //页面说明
-    // page_id: 'page_id',
-    // page_name: 'page_name',
-    // page_section: 'page_section', //版块
-    // event_type: binding.arg, //事件类型
-    // key_action: 'key_action', //关键行为
-    // toast: 'toast行为', //toast行为
-    // order_no: 'order_no', //订单号
-    // basic_type: 'basic_type', //基础类型
-    // track_source: 'track_source', //采集来源
-
     //点击事件指令定义
     app.directive('log-click', {
       mounted(el, binding) {
         el.addEventListener(
           'click',
           (el.clickHandler = function (e: PointerEvent) {
-            console.log(el, binding)
             const { pageX, pageY, screenX, screenY } = e
             window.Log.logReport({
-              eventType: binding.arg as eventTypeEnum,
+              eventType: eventTypeEnum.evt_click,
               record_time: new Date(e.timeStamp + performance.timeOrigin),
               location_coor: {
                 pageX,
@@ -88,7 +74,6 @@ export default {
     //input事件指令定义
     app.directive('log-input', {
       mounted(el, binding) {
-        //处理指令在封装的组件上使用的问题
         if (el.tagName !== 'INPUT') {
           el = el.getElementsByTagName('input')[0]
         }
@@ -104,7 +89,7 @@ export default {
           'input',
           (el.inputHandler = debounce(function (e: InputEvent) {
             window.Log.logReport({
-              eventType: binding.arg as eventTypeEnum,
+              eventType: eventTypeEnum.evt_click,
               record_time: new Date(e.timeStamp + performance.timeOrigin),
               location_coor, //点击位置-坐标
               ...getEventInfo(),

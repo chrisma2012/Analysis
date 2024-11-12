@@ -11,65 +11,23 @@ export enum eventTypeEnum {
   evt_console_log = 'evt_console_log',
   evt_console_error = 'evt_console_error',
   evt_console_warn = 'evt_console_warn',
+  evt_test = 'evt_test',
 }
-
 declare global {
   interface Window {
     Log: LogReport
     _userData: UserData
+    _reportData: Record<string, logDataType>
   }
 }
-
-export interface UserData {
-  user_id: string | number
-  phone_info: {
-    phone: string
-    area_code: string
-    phone_city: string
-    phone_province: string
-    operator: string
-  }
-  position: PositionType
+export interface Navigator {
+  oscpu?: string
+  connection?: { effectiveType: string; type: string }
 }
 export interface logDataType {
   eventType: eventTypeEnum
   [key: string]: unknown
 }
-export interface PositionType {
-  server_ip: string
-  client_ip: string
-  client_ip_region: string
-  client_ip_province: string
-  client_ip_city: string
-  longitude: number
-  latitude: number
-}
-export interface pluginOptionType {
-  sts_token_api: string
-  aliyun_config: {
-    host: string
-    project: string
-    logstore: string
-    time?: number
-    count?: number
-    topic?: string
-    source?: string
-    tags?: Record<string, string>
-  }
-}
-export interface PageViewType {
-  session_id: string
-  product_id: number
-  product_name: string
-  page_cnt: number
-  clause_status: string
-}
-
-export interface Navigator {
-  oscpu?: string
-  connection?: { effectiveType: string; type: string }
-}
-
 export interface UserData {
   user_id: string | number
   phone_info: {
@@ -81,7 +39,6 @@ export interface UserData {
   }
   position: PositionType
 }
-
 export interface PositionType {
   server_ip: string
   client_ip: string
@@ -92,7 +49,7 @@ export interface PositionType {
   latitude: number
 }
 export interface pluginOptionType {
-  sts_token_api: string
+  // sts_token_api: string
   aliyun_config: {
     host: string
     project: string

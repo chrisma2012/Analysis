@@ -1,8 +1,9 @@
-// import SlsTracker from '@aliyun-sls/web-track-browser'
+// import { App } from 'vue'
 
-// declare global {
-//   interface Window {
-//     tracker: SlsTracker
-//     logReport: () => void //日志上报通用方法
-//   }
-// }
+// // import SlsTracker from '@aliyun-sls/web-track-browser'
+declare global {
+  interface Window {
+    logData: object
+  }
+}
+export {}

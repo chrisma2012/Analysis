@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { defineAsyncComponent, reactive, ref, shallowRef } from 'vue'
-import { eventTypeEnum } from './plugin/log.sdk'
+import { reactive, ref, shallowRef } from 'vue'
+
 import Input from './components/Input.vue'
 
 const formData = reactive({
@@ -16,16 +16,25 @@ const directData = {
   a: 2,
   b: 4,
 }
-// setTimeout(() => {
-//   throw new Error('错误')
-// }, 4000)
+setTimeout(() => {
+  const imgDom = document.createElement('img')
+  imgDom.src = 'http://e.hiphotos.baidu.com/image/pic/item/a1ec08fa513d2697e542494057fbb2fb4316d81e.jpg'
+  document.body.appendChild(imgDom)
+}, 9000)
 const showPopBusinessRules = () => {
   // currentPop.value = defineAsyncComponent(() => import('./popup/popBusinessRules.vue'))
-  // window.Log.logReport({
-  //   eventType: eventTypeEnum.evt_click,
-  //   productName: '规则弹窗',
-  //   price: 500,
-  // })
+
+}
+declare global {
+  interface Window {
+    _reportData: Record<string, object>
+  }
+}
+window._reportData = {
+  "header-img": {
+    a: 1,
+    b: 3
+  }
 }
 </script>
 
@@ -38,7 +47,8 @@ const showPopBusinessRules = () => {
   <span class="anchor anchor-member-center"></span>
   <span class="anchor anchor-download-miguapp"></span>
   <span class="anchor anchor-unsubscribe"></span>
-  <img class="header" src="https://gzsucai.diantads.com/static/t/xxl/tf/111386/cl129_t_lonnianqicai.png" />
+  <img class="header" id="header-img"
+    src="https://gzsucai.diantads.com/static/t/xxl/tf/111386/cl129_t_lonnianqicai.png" />
   <div class="mod-login">
     <div class="carousel"></div>
     <img src="https://gzsucai.diantads.com/static/t/xxl/tf/11801/step1.gif" />
