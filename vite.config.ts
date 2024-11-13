@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import vueDevTools from 'vite-plugin-vue-devtools'
+// import vueDevTools from 'vite-plugin-vue-devtools'
 // eslint-disable-next-line
 // @ts-ignore
 import postcsspxtoviewport from 'postcss-px-to-viewport'
@@ -13,13 +13,14 @@ import { VantResolver } from '@vant/auto-import-resolver'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/dist/',
   server: {
     host: '0.0.0.0',
   },
   plugins: [
     vue(),
     vueJsx(),
-    vueDevTools(),
+    // vueDevTools(),
     AutoImport({
       resolvers: [VantResolver()],
     }),
@@ -68,8 +69,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: id => {
-          if (id.includes('aliyun-sls')) {
-            return 'aliyun-sls'
+          if (id.includes('vue')) {
+            return 'vue'
           }
         },
       },

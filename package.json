@@ -17,7 +17,6 @@
     "@aliyun-sls/web-sts-plugin": "^0.3.8",
     "@aliyun-sls/web-track-browser": "^0.3.8",
     "@sentry/vue": "^8.36.0",
-    "log-sdk-plugin-h5": "^1.0.8",
     "vant": "^4.9.8",
     "vue": "^3.5.12",
     "vue-matomo": "^4.2.0",
@@ -26,7 +25,7 @@
   "devDependencies": {
     "@tsconfig/node20": "^20.1.4",
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^20.16.11",
+    "@types/node": "^20.17.6",
     "@vant/auto-import-resolver": "^1.2.1",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vitejs/plugin-vue-jsx": "^4.0.1",

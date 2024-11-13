@@ -3,31 +3,46 @@ import SlsTracker from '@aliyun-sls/web-track-browser'
 //通过STS可以获取自定义时效和访问权限的临时身份凭证，无需开启Logstore的WebTracking功能，不会产生脏数据
 // import createStsPlugin from '@aliyun-sls/web-sts-plugin'
 import { eventTypeEnum, type logDataType, type Navigator, type PageViewType, type pluginOptionType, type UserData } from './common.var'
-function getStr(target: object) {
-  let str: string = ''
-  for (const key in target) {
-    if (typeof target[key as keyof typeof target] === 'string') {
-      str += `${key}：  ${target[key as keyof typeof target]};`
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+const debounce = (func: Function, timeout: number = 2000) => {
+  let handler: number
+  return (e: Event) => {
+    if (handler) {
+      clearTimeout(handler)
     }
+    handler = window.setTimeout(() => func(e), timeout)
   }
+}
+
+function stringify(obj: object) {
+  let cache: unknown[] | null = []
+  const str = JSON.stringify(obj, function (_key, value) {
+    if (typeof value === 'object' && value !== null) {
+      if ((cache as unknown[]).indexOf(value) !== -1) {
+        // Circular reference found, discard key
+        return
+      }
+      // Store value in our collection
+      ;(cache as unknown[]).push(value)
+    }
+    return value
+  })
+  cache = null // reset the cache
   return str
 }
-// 监控控制台输出
-function consoleWrapper(fn: () => void, eventType: eventTypeEnum) {
-  return function (...args: []) {
-    const newArgs = args.map(item => {
-      if (typeof item === 'object' && !Array.isArray(item)) {
-        return getStr(item)
-      }
-      return item
-    })
-    window.Log.logReport({
-      eventType,
-      console_content: newArgs,
-    })
-    fn.apply(window, args)
+
+const getEventInfo = () => {
+  const { phone_province, phone_city, phone } = window._userData.phone_info
+  return {
+    page_length: `${(screen.availHeight / document.documentElement.scrollHeight) * screen.availHeight}/${document.body.clientHeight}`, //滚动条总长度/页面总长度
+    current_page_length: document.documentElement.scrollTop, //当前滚动条位置
+    phone_province: phone_province,
+    phone_city: phone_city,
+    phone: phone,
   }
 }
+
 // /(?<=MicroMessenger\/).+(?=\()/ 匹配MicroMessenger和）之间的字符
 const getBrowserInfo = (ua: string) => {
   const mobile_browser = [
@@ -219,8 +234,14 @@ export class LogReport {
     const [platform] = navigator.userAgent.match(/(?<=\()(.+?)(?=\))/g) as RegExpMatchArray
 
     const browserInfo = getBrowserInfo(navigator.userAgent)
-
     //上报基础信息
+    // this.reportPageView({
+    //   session_id: 'session_id',
+    //   product_id: 130,
+    //   product_name: 'product_name',
+    //   page_cnt: 10000,
+    //   clause_status: 'clause_status',
+    // })
     this.logReport([
       {
         eventType: eventTypeEnum.evt_device_info,
@@ -295,31 +316,93 @@ const Log = (window.Log = new LogReport({
     },
   },
 }))
-//改写console方法必须放在Log挂载window之后
-console.log = consoleWrapper(console.log, eventTypeEnum.evt_console_log)
-console.error = consoleWrapper(console.error, eventTypeEnum.evt_console_error)
-console.warn = consoleWrapper(console.warn, eventTypeEnum.evt_console_warn)
 
-//错误监控
-function errorMonitor() {
-  window.onerror = function (message, _url, line, column, error) {
-    Log.logReport({
-      eventType: eventTypeEnum.evt_error,
-      content: `【${message}】:${error?.stack} 第${line}行 第${column}列`,
+// 监控控制台输出
+function consoleWrapper(fn: () => void, eventType: eventTypeEnum, Log: LogReport) {
+  return function (...args: []) {
+    Log?.logReport({
+      eventType,
+      console_content: args.map(item => stringify(item)),
     })
+    fn.apply(window, args)
+  }
+}
+
+//改写console方法必须放在Log挂载window之后
+console.log = consoleWrapper(console.log, eventTypeEnum.evt_console_log, Log)
+console.error = consoleWrapper(console.error, eventTypeEnum.evt_console_error, Log)
+console.warn = consoleWrapper(console.warn, eventTypeEnum.evt_console_warn, Log)
+
+window._vueApp.config.globalProperties.$router.afterEach(() => {
+  Log?.reportPageView({
+    session_id: 'session_id',
+    product_id: 130,
+    product_name: 'product_name',
+    page_cnt: 10000,
+    clause_status: 'clause_status',
+  })
+})
+
+//监听用户信息api接口，以初始化sdk上报
+function watchUserApiToInitLogSdk() {
+  const userInfoApiEntry = window.performance.getEntriesByType('resource').find(
+    item =>
+      // ['fetch', 'xmlhttprequest'].indexOf((item as PerformanceResourceTiming).initiatorType) > -1 &&
+      ['script'].indexOf((item as PerformanceResourceTiming).initiatorType) > -1 && //此处要修改成用户接口的initiatorType相关字段
+      item.name.indexOf('index') > -1, //此处要修改成用户接口的关键字/user/
+  )
+
+  if (userInfoApiEntry !== undefined) {
+    //有可能为undefined。因为接口请求比js加载执行慢
+    //事件上报开始
+    // debugger
+    Log.initReport('13856984586')
   }
 
-  window.addEventListener('unhandledrejection', ({ reason: { message, stack } }) => {
-    Log.logReport({
-      eventType: eventTypeEnum.evt_unhandledrejection,
-      content: `【${message}】:${stack}`,
+  const perfObserver: PerformanceObserverCallback = list => {
+    list.getEntries().forEach((entry: PerformanceEntry) => {
+      //处理log.sdk.js的加载执行比用户信息接口请求快的情况，这里也需要监听一下。
+      //监听请求用户信息的接口，判断用户信息是否存在，从而初始化日志sdk
+      if (
+        entry.entryType === 'resource' &&
+        // ['fetch', 'xmlhttprequest'].indexOf((entry as PerformanceResourceTiming).initiatorType) > -1 &&
+        // entry.name.indexOf('/get_ip_and_phone_info/') > -1 //此处等后台的用户接口实现后，需要修改为对应的接口关键字如 /user/。现在只是方便测试才这么写
+        ['script'].indexOf((entry as PerformanceResourceTiming).initiatorType) > -1 && //此处要修改成用户接口的initiatorType相关字段
+        entry.name.indexOf('index') > -1 //此处要修改成用户接口的关键字/user/
+      ) {
+        //事件上报开始
+        // Log.initReport('13856984586')
+      }
     })
+  }
+  const observer = new PerformanceObserver(perfObserver)
+  observer.observe({ entryTypes: ['resource'] })
+
+  return observer
+}
+
+const observerInstance = watchUserApiToInitLogSdk()
+
+//错误监控
+window.onerror = function (message, _url, line, column, error) {
+  Log.logReport({
+    eventType: eventTypeEnum.evt_error,
+    content: `【${message}】:${error?.stack} 第${line}行 第${column}列`,
   })
 }
-errorMonitor()
+
+window.addEventListener('unhandledrejection', ({ reason: { message, stack } }) => {
+  Log.logReport({
+    eventType: eventTypeEnum.evt_unhandledrejection,
+    content: `【${message}】:${stack}`,
+  })
+})
 
 // 页面卸载前上报性能日志
 window.addEventListener('beforeunload', () => {
+  //解除监听
+  observerInstance?.disconnect()
+
   const [performanceNavigationTiming] = window.performance.getEntriesByType('navigation') as Array<PerformanceNavigationTiming>
 
   let resourceTimeTotal = 0
@@ -335,8 +418,8 @@ window.addEventListener('beforeunload', () => {
       loadTime: item.duration,
     }
   })
-
-  window.Log.logReport(
+  // localStorage.setItem('performance' + Date.now(), JSON.stringify(resourceTimingArray))
+  Log.logReport(
     {
       eventType: eventTypeEnum.evt_performance,
       //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
@@ -349,12 +432,29 @@ window.addEventListener('beforeunload', () => {
   )
 })
 
+//记录点击的位置
+let location_coor = {}
 // 监听页面点击事件
 window.addEventListener('click', e => {
+  const { pageX, pageY, screenX, screenY } = e
+  location_coor = { pageX, pageY, screenX, screenY }
+
   const domId = (e.target as HTMLElement)?.id
   const data = window._reportData?.[domId]
   if (!domId || !data) return
-  window.Log.logReport({
+  Log.logReport({
     ...data,
   } as logDataType)
 })
+
+window.addEventListener(
+  'input',
+  debounce((e: InputEvent) => {
+    Log.logReport({
+      eventType: eventTypeEnum.evt_click,
+      record_time: new Date(e.timeStamp + performance.timeOrigin),
+      location_coor, //点击位置-坐标
+      ...getEventInfo(),
+    })
+  }, 3000),
+)

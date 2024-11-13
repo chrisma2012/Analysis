@@ -1,3 +1,5 @@
+import type { App } from 'vue'
+
 export enum eventTypeEnum {
   evt_error = 'evt_error',
   evt_unhandledrejection = 'evt_unhandledrejection',
@@ -18,8 +20,16 @@ declare global {
     Log: LogReport
     _userData: UserData
     _reportData: Record<string, logDataType>
+    logSdkPlugin: {
+      install: (app: App) => void
+    }
+    _vueApp: App<Element>
   }
 }
+
+// export interface App {
+//   __vue_app__: App<Element>
+// }
 export interface Navigator {
   oscpu?: string
   connection?: { effectiveType: string; type: string }
