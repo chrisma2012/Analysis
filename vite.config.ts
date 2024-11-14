@@ -13,7 +13,7 @@ import { VantResolver } from '@vant/auto-import-resolver'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/dist/',
+  // base: '/dist/',
   server: {
     host: '0.0.0.0',
   },

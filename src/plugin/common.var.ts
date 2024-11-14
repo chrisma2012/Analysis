@@ -39,7 +39,6 @@ export interface logDataType {
   [key: string]: unknown
 }
 export interface UserData {
-  user_id: string | number
   phone_info: {
     phone: string
     area_code: string
@@ -89,7 +88,6 @@ export declare class LogReport {
   toReportQueue: Array<logDataType | logDataType[]>
   static readonly sdk_version: string
   constructor()
-  getIpPhoneConf(phone: string): Promise<void>
   reportPageView(data: PageViewType): number | void
   initReport(phone: string): Promise<void>
   /**

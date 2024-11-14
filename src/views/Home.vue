@@ -3,6 +3,7 @@ import { reactive, ref, shallowRef } from 'vue'
 
 // import Input from '../components/Input.vue'
 import { eventTypeEnum } from '../plugin/common.var'
+import { ajax } from '@/js/util';
 
 const formData = reactive({
     phone: '',
@@ -17,15 +18,17 @@ const directData = {
     a: 2,
     b: 4,
 }
-setTimeout(() => {
-    const imgDom = document.createElement('img')
-    imgDom.src = 'http://e.hiphotos.baidu.com/image/pic/item/a1ec08fa513d2697e542494057fbb2fb4316d81e.jpg'
-    document.body.appendChild(imgDom)
-}, 9000)
+// setTimeout(() => {
+//     const imgDom = document.createElement('img')
+//     imgDom.src = 'http://e.hiphotos.baidu.com/image/pic/item/a1ec08fa513d2697e542494057fbb2fb4316d81e.jpg'
+//     document.body.appendChild(imgDom)
+// }, 9000)
 const showPopBusinessRules = () => {
     // currentPop.value = defineAsyncComponent(() => import('./popup/popBusinessRules.vue'))
 
 }
+
+
 
 window._reportData = {
     "header-img": {
@@ -34,6 +37,53 @@ window._reportData = {
         b: 3
     }
 }
+
+
+const getIpPhoneConf = async (phone: string) => {
+    // const res = await ajax('get', `http://172.16.60.214:5001/app-api/get_ip_and_phone_info/${phone}`)
+    // const { ip_info, phone_info, server_ip } = res.data
+    setTimeout(() => {
+        window._userData.phone_info = {
+            phone,
+            area_code: '11',
+            phone_province: '11',
+            phone_city: '11',
+            operator: '11',
+        }
+        window._userData.position = {
+            server_ip: '8.9.8.8',
+            client_ip: '11',
+            client_ip_region: '11',
+            client_ip_province: '11',
+            client_ip_city: '11',
+            longitude: 110,
+            latitude: 120,
+        }
+    }, 1400)
+}
+
+
+// const getIpPhoneConf = async (phone: string) => {
+//     const res = await ajax('get', `http://172.16.60.214:5001/app-api/get_ip_and_phone_info/${phone}`)
+//     const { ip_info, phone_info, server_ip } = res.data
+//     window._userData.phone_info = {
+//         phone,
+//         area_code: phone_info.area_code,
+//         phone_province: phone_info.province,
+//         phone_city: phone_info.city,
+//         operator: phone_info.phone_type,
+//     }
+//     window._userData.position = {
+//         server_ip,
+//         client_ip: ip_info.ip,
+//         client_ip_region: ip_info.country,
+//         client_ip_province: ip_info.region,
+//         client_ip_city: ip_info.city,
+//         longitude: ip_info.longitude,
+//         latitude: ip_info.latitude,
+//     }
+// }
+getIpPhoneConf('13580563526')
 </script>
 
 

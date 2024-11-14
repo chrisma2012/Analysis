@@ -3,6 +3,7 @@ import SlsTracker from '@aliyun-sls/web-track-browser'
 //通过STS可以获取自定义时效和访问权限的临时身份凭证，无需开启Logstore的WebTracking功能，不会产生脏数据
 // import createStsPlugin from '@aliyun-sls/web-sts-plugin'
 import { eventTypeEnum, type logDataType, type Navigator, type PageViewType, type pluginOptionType, type UserData } from './common.var'
+import type { RouteLocationResolvedGeneric } from 'vue-router'
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 const debounce = (func: Function, timeout: number = 2000) => {
@@ -117,65 +118,13 @@ const getBrowserInfo = (ua: string) => {
   return browserInfo
 }
 
-const ajax = async (method: string, url: string) => {
-  if (typeof fetch === 'function') {
-    // Default options are marked with *
-    const response = await fetch(url, {
-      method,
-    })
-
-    return response.json() // parses JSON response into native JavaScript objects
-  }
-  return new Promise((resolve, reject) => {
-    const xhr = new window.XMLHttpRequest()
-    xhr.open(method, url, true)
-    xhr.send()
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          resolve(JSON.parse(xhr.response))
-        } else {
-          reject('Wrong status code.')
-        }
-      }
-    }
-  })
-}
-
-let aliyun_config = {
-  host: ' ', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
-  project: ' ', // Project 名称
-  logstore: ' ', // Logstore 名称
-  time: 10, // 发送日志的时间间隔，默认是10秒
-  count: 10, // 发送日志的数量大小，默认是10条
-  topic: 'topic', // 自定义日志主题
-  source: 'Analysis', //日志来源。您可以自定义该字段，以便于识别。此处取项目的项目名字。唯一值
-  //日志标签信息。您可以自定义该字段，便于识别。
-  tags: {
-    // sdk_version: '1.0.0',
-  },
-}
-
-// const stsOpt = {
-//   accessKeyId: '',
-//   accessKeySecret: '',
-//   securityToken: '',
-//   sts_token_api: '',
-//   // 以下是一个 stsToken 刷新函数的简单示例
-//   refreshSTSToken: () =>
-//     ajax('GET', stsOpt.sts_token_api).then(res => {
-//       stsOpt.accessKeyId = res.AccessKeyId
-//       stsOpt.accessKeySecret = res.AccessKeySecret
-//       stsOpt.securityToken = res.SecurityToken
-//     }),
-//   refreshSTSTokenInterval: 300000, //刷新令牌的间隔（毫秒），默认为 300000（5分钟）。
-// }
-
 /**
  * //定义日志上报SDK类
  *
  * @class LogReport
  */
+
+let winUserData = {}
 export class LogReport {
   tracker
 
@@ -186,11 +135,25 @@ export class LogReport {
 
   constructor(data: pluginOptionType) {
     window._userData = {} as UserData
-    // stsOpt.sts_token_api = data.sts_token_api
-    aliyun_config = { ...aliyun_config, ...data.aliyun_config }
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const _self = this
+    //倘若对phone_info监听前，该属性已经初始化，则直接_self.initReport
+    if (window._userData.phone_info) _self.initReport()
+    Object.defineProperty(window._userData, 'phone_info', {
+      enumerable: true,
+      configurable: true,
+      get() {
+        return winUserData
+      },
+      set(newValue) {
+        winUserData = newValue
+        _self.initReport()
+      },
+    })
 
     // const stsPlugin = createStsPlugin(stsOpt)
-    const tracker = new SlsTracker(aliyun_config)
+    const tracker = new SlsTracker(data.aliyun_config)
     // 使用 sts 插件
     // tracker.useStsPlugin(stsPlugin)
     this.tracker = tracker
@@ -199,49 +162,10 @@ export class LogReport {
     }
   }
 
-  async getIpPhoneConf(phone: string) {
-    const res = await ajax('get', `http://47.119.183.29/app-api/get_ip_and_phone_info/${phone}`)
-    const { ip_info, phone_info, server_ip } = res.data
-    window._userData.phone_info = {
-      phone,
-      area_code: phone_info.area_code,
-      phone_province: phone_info.province,
-      phone_city: phone_info.city,
-      operator: phone_info.phone_type,
-    }
-    window._userData.position = {
-      server_ip,
-      client_ip: ip_info.ip,
-      client_ip_region: ip_info.country,
-      client_ip_province: ip_info.region,
-      client_ip_city: ip_info.city,
-      longitude: ip_info.longitude,
-      latitude: ip_info.latitude,
-    }
-  }
-
-  public reportPageView(data: PageViewType) {
-    return this.logReport({
-      eventType: eventTypeEnum.evt_page_view,
-      track_version: LogReport.sdk_version,
-      key_url: location.href,
-      ...data,
-    })
-  }
-
-  public async initReport(phone: string) {
-    await this.getIpPhoneConf(phone)
+  public reportDeviceInfoAndShare() {
     const [platform] = navigator.userAgent.match(/(?<=\()(.+?)(?=\))/g) as RegExpMatchArray
 
     const browserInfo = getBrowserInfo(navigator.userAgent)
-    //上报基础信息
-    // this.reportPageView({
-    //   session_id: 'session_id',
-    //   product_id: 130,
-    //   product_name: 'product_name',
-    //   page_cnt: 10000,
-    //   clause_status: 'clause_status',
-    // })
     this.logReport([
       {
         eventType: eventTypeEnum.evt_device_info,
@@ -275,6 +199,23 @@ export class LogReport {
     ])
   }
 
+  public reportPageView(data: PageViewType) {
+    this.logReport({
+      eventType: eventTypeEnum.evt_page_view,
+      track_version: LogReport.sdk_version,
+      key_url: location.href,
+      ...data,
+    })
+    // //如果用户信息还没初始化，直接退出
+    // if (window._userData.phone_info === undefined) return
+    // this.reportDeviceInfoAndShare()
+  }
+
+  public async initReport() {
+    // await this.getIpPhoneConf(phone)
+    this.reportDeviceInfoAndShare()
+  }
+
   /**
    *
    *
@@ -286,15 +227,10 @@ export class LogReport {
   public logReport(data: logDataType | Array<logDataType>, immediate?: boolean) {
     if (Array.isArray(data)) {
       //批量上报
-      data = data.map(item => {
-        item.user_id = window._userData?.user_id
-        return item
-      })
       if (this.tracker === undefined) return this.toReportQueue.push(data)
       return immediate ? this.tracker.sendBatchLogsImmediate(data) : this.tracker.sendBatchLogs(data)
     }
     //单个上报
-    data = { ...data, user_id: window._userData?.user_id }
     if (this.tracker === undefined) return this.toReportQueue.push(data)
     return immediate ? this.tracker.sendImmediate(data) : this.tracker.send(data)
   }
@@ -303,9 +239,9 @@ export class LogReport {
 const Log = (window.Log = new LogReport({
   // sts_token_api: 'http://8.138.16.88/get_sts_token',
   aliyun_config: {
-    host: 'cn-guangzhou.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
-    project: 'project-webtrcking-qiheng-2024', // Project 名称
-    logstore: 'log-cdn-store', // Logstore 名称
+    host: 'cn-chengdu.log.aliyuncs.com', // 所在地域的服务入口。例如cn-hangzhou.log.aliyuncs.com
+    project: 'qiheng', // Project 名称
+    logstore: 'ldy_web', // Logstore 名称
     time: 3, // 发送日志的时间间隔，默认是10秒
     count: 10, // 发送日志的数量大小，默认是10条
     topic: 'topic', // 自定义日志主题
@@ -333,7 +269,8 @@ console.log = consoleWrapper(console.log, eventTypeEnum.evt_console_log, Log)
 console.error = consoleWrapper(console.error, eventTypeEnum.evt_console_error, Log)
 console.warn = consoleWrapper(console.warn, eventTypeEnum.evt_console_warn, Log)
 
-window._vueApp.config.globalProperties.$router.afterEach(() => {
+const _$router = window._vueApp.config.globalProperties.$router
+_$router.afterEach(() => {
   Log?.reportPageView({
     session_id: 'session_id',
     product_id: 130,
@@ -342,46 +279,50 @@ window._vueApp.config.globalProperties.$router.afterEach(() => {
     clause_status: 'clause_status',
   })
 })
+_$router.beforeEach((_to, _from, next) => {
+  // const href = _to.href.indexOf('#') > -1 ? location.href.match(/(.)*(?=#)/)
+  reportPerformance((_from as RouteLocationResolvedGeneric).href)
+  next()
+})
 
 //监听用户信息api接口，以初始化sdk上报
-function watchUserApiToInitLogSdk() {
-  const userInfoApiEntry = window.performance.getEntriesByType('resource').find(
-    item =>
-      // ['fetch', 'xmlhttprequest'].indexOf((item as PerformanceResourceTiming).initiatorType) > -1 &&
-      ['script'].indexOf((item as PerformanceResourceTiming).initiatorType) > -1 && //此处要修改成用户接口的initiatorType相关字段
-      item.name.indexOf('index') > -1, //此处要修改成用户接口的关键字/user/
-  )
+// function watchUserApiToInitLogSdk() {
+//   const userInfoApiEntry = window.performance.getEntriesByType('resource').find(
+//     item =>
+//       // ['fetch', 'xmlhttprequest'].indexOf((item as PerformanceResourceTiming).initiatorType) > -1 &&
+//       ['script'].indexOf((item as PerformanceResourceTiming).initiatorType) > -1 && //此处要修改成用户接口的initiatorType相关字段
+//       item.name.indexOf('index') > -1, //此处要修改成用户接口的关键字/user/
+//   )
 
-  if (userInfoApiEntry !== undefined) {
-    //有可能为undefined。因为接口请求比js加载执行慢
-    //事件上报开始
-    // debugger
-    Log.initReport('13856984586')
-  }
+//   if (userInfoApiEntry !== undefined) {
+//     //有可能为undefined。因为接口请求比js加载执行慢
+//     //事件上报开始
+//     // if (!window._userData.phone_info) Log.initReport('13856984586')
+//   }
 
-  const perfObserver: PerformanceObserverCallback = list => {
-    list.getEntries().forEach((entry: PerformanceEntry) => {
-      //处理log.sdk.js的加载执行比用户信息接口请求快的情况，这里也需要监听一下。
-      //监听请求用户信息的接口，判断用户信息是否存在，从而初始化日志sdk
-      if (
-        entry.entryType === 'resource' &&
-        // ['fetch', 'xmlhttprequest'].indexOf((entry as PerformanceResourceTiming).initiatorType) > -1 &&
-        // entry.name.indexOf('/get_ip_and_phone_info/') > -1 //此处等后台的用户接口实现后，需要修改为对应的接口关键字如 /user/。现在只是方便测试才这么写
-        ['script'].indexOf((entry as PerformanceResourceTiming).initiatorType) > -1 && //此处要修改成用户接口的initiatorType相关字段
-        entry.name.indexOf('index') > -1 //此处要修改成用户接口的关键字/user/
-      ) {
-        //事件上报开始
-        // Log.initReport('13856984586')
-      }
-    })
-  }
-  const observer = new PerformanceObserver(perfObserver)
-  observer.observe({ entryTypes: ['resource'] })
+//   const perfObserver: PerformanceObserverCallback = list => {
+//     list.getEntries().forEach((entry: PerformanceEntry) => {
+//       //处理log.sdk.js的加载执行比用户信息接口请求快的情况，这里也需要监听一下。
+//       //监听请求用户信息的接口，判断用户信息是否存在，从而初始化日志sdk
+//       if (
+//         entry.entryType === 'resource' &&
+//         // ['fetch', 'xmlhttprequest'].indexOf((entry as PerformanceResourceTiming).initiatorType) > -1 &&
+//         // entry.name.indexOf('/get_ip_and_phone_info/') > -1 //此处等后台的用户接口实现后，需要修改为对应的接口关键字如 /user/。现在只是方便测试才这么写
+//         ['script'].indexOf((entry as PerformanceResourceTiming).initiatorType) > -1 && //此处要修改成用户接口的initiatorType相关字段
+//         entry.name.indexOf('index') > -1 //此处要修改成用户接口的关键字/user/
+//       ) {
+//         //事件上报开始
+//         // if (!window._userData.phone_info) Log.initReport('13856984586')
+//       }
+//     })
+//   }
+//   const observer = new PerformanceObserver(perfObserver)
+//   observer.observe({ entryTypes: ['resource'] })
 
-  return observer
-}
+//   return observer
+// }
 
-const observerInstance = watchUserApiToInitLogSdk()
+// const observerInstance = watchUserApiToInitLogSdk()
 
 //错误监控
 window.onerror = function (message, _url, line, column, error) {
@@ -398,11 +339,7 @@ window.addEventListener('unhandledrejection', ({ reason: { message, stack } }) =
   })
 })
 
-// 页面卸载前上报性能日志
-window.addEventListener('beforeunload', () => {
-  //解除监听
-  observerInstance?.disconnect()
-
+function reportPerformance(from?: string) {
   const [performanceNavigationTiming] = window.performance.getEntriesByType('navigation') as Array<PerformanceNavigationTiming>
 
   let resourceTimeTotal = 0
@@ -422,6 +359,7 @@ window.addEventListener('beforeunload', () => {
   Log.logReport(
     {
       eventType: eventTypeEnum.evt_performance,
+      url: from || location.href,
       //或者 performanceNavigationTiming.loadEventEnd - performanceNavigationTiming.startTime 值和duration一样
       page_load_start: timeOrigin + performanceNavigationTiming.startTime,
       page_load_end: timeOrigin + performanceNavigationTiming.loadEventEnd,
@@ -430,7 +368,25 @@ window.addEventListener('beforeunload', () => {
     },
     true,
   )
-})
+}
+
+// 页面卸载前上报性能日志
+// window.addEventListener('beforeunload', () => {
+//   //解除监听
+//   reportPerformance()
+// })
+if ('onvisibilitychange' in document) {
+  document.addEventListener('visibilitychange', function logData() {
+    if (document.visibilityState === 'hidden') {
+      // navigator.sendBeacon("/log", analyticsData);
+      reportPerformance()
+    }
+  })
+} else if ('onpagehide' in window) {
+  window.addEventListener('pagehide ', function logData() {
+    reportPerformance()
+  })
+}
 
 //记录点击的位置
 let location_coor = {}
