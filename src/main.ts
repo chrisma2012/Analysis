@@ -6,5 +6,4 @@ import './style/reset.scss'
 
 const app = (window._vueApp = createApp(AppCom))
 app.use(router)
-
 app.mount('#app')

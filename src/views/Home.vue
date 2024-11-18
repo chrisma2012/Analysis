@@ -96,7 +96,7 @@ getIpPhoneConf('13580563526')
     <span class="anchor anchor-member-center"></span>
     <span class="anchor anchor-download-miguapp"></span>
     <span class="anchor anchor-unsubscribe"></span>
-    <img class="header" id="header-img"
+    <img class="header header1" id="header-img"
         src="https://gzsucai.diantads.com/static/t/xxl/tf/111386/cl129_t_lonnianqicai.png" />
     <div class="mod-login">
         <div class="carousel"></div>

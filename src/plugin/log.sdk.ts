@@ -5,6 +5,7 @@ import SlsTracker from '@aliyun-sls/web-track-browser'
 import { eventTypeEnum, type logDataType, type Navigator, type PageViewType, type pluginOptionType, type UserData } from './common.var'
 import type { RouteLocationResolvedGeneric } from 'vue-router'
 
+let hasCurrentPageReport = false //用于记录当前页面是否已经上报过initReport事件
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 const debounce = (func: Function, timeout: number = 2000) => {
   let handler: number
@@ -138,8 +139,8 @@ export class LogReport {
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const _self = this
-    //倘若对phone_info监听前，该属性已经初始化，则直接_self.initReport
-    if (window._userData.phone_info) _self.initReport()
+    //倘若对phone_info监听前，该phone_info属性已经初始化，则直接_self.initReport
+    _self.initReport()
     Object.defineProperty(window._userData, 'phone_info', {
       enumerable: true,
       configurable: true,
@@ -212,6 +213,8 @@ export class LogReport {
   }
 
   public async initReport() {
+    if (hasCurrentPageReport || window._userData.phone_info === undefined || !window._userData.phone_info?.area_code) return
+    hasCurrentPageReport = true
     // await this.getIpPhoneConf(phone)
     this.reportDeviceInfoAndShare()
   }
@@ -271,6 +274,7 @@ console.warn = consoleWrapper(console.warn, eventTypeEnum.evt_console_warn, Log)
 
 const _$router = window._vueApp.config.globalProperties.$router
 _$router.afterEach(() => {
+  hasCurrentPageReport = false //重置当前页面的initReport上报状态
   Log?.reportPageView({
     session_id: 'session_id',
     product_id: 130,
@@ -278,6 +282,7 @@ _$router.afterEach(() => {
     page_cnt: 10000,
     clause_status: 'clause_status',
   })
+  Log?.initReport()
 })
 _$router.beforeEach((_to, _from, next) => {
   // const href = _to.href.indexOf('#') > -1 ? location.href.match(/(.)*(?=#)/)
@@ -394,7 +399,7 @@ let location_coor = {}
 window.addEventListener('click', e => {
   const { pageX, pageY, screenX, screenY } = e
   location_coor = { pageX, pageY, screenX, screenY }
-
+  console.log(e)
   const domId = (e.target as HTMLElement)?.id
   const data = window._reportData?.[domId]
   if (!domId || !data) return
